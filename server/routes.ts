@@ -3,12 +3,26 @@ import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { z } from "zod";
-import { insertCandidateSchema, insertElectionSchema } from "@shared/schema";
-import crypto from 'crypto';
+import profileRoutes from "./routes/profile";
+import path from "path";
+import fs from "fs";
+import express from "express"; // Added import for express.static
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create uploads directory if it doesn't exist
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+  }
+
+  // Serve uploaded files
+  app.use("/uploads", express.static(uploadsDir));
+
   setupAuth(app);
+
+  // Register profile routes
+  app.use("/api", profileRoutes);
 
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });

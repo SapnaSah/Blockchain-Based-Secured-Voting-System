@@ -79,6 +79,15 @@ export class DatabaseStorage {
       .set({ isAdmin: true })
       .where(eq(users.id, userId));
   }
+
+  async updateUser(id: number, updates: Partial<Omit<User, "id" | "password" | "username" | "isAdmin">>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
 }
 
 export const storage = new DatabaseStorage();
