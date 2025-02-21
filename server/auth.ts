@@ -5,6 +5,24 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  }
+});
+
+async function sendVerificationEmail(email: string, token: string) {
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Verify your BlockVote account',
+    html: `Click <a href="${process.env.APP_URL}/verify/${token}">here</a> to verify your account`
+  });
+}
 import { User as SelectUser } from "@shared/schema";
 
 declare global {

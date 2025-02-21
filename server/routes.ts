@@ -144,3 +144,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   return httpServer;
 }
+app.get("/api/vote/:id/receipt", async (req, res) => {
+  try {
+    const vote = await storage.getVote(Number(req.params.id));
+    const receipt = {
+      voteId: vote.id,
+      timestamp: vote.timestamp,
+      blockHash: vote.blockHash,
+      electionId: vote.electionId
+    };
+    res.json(receipt);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to generate receipt" });
+  }
+});
