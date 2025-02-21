@@ -1,68 +1,58 @@
-import { IStorage } from "./storage";
-import { User, Candidate, Election, Vote, InsertUser } from "@shared/schema";
+import { Pool } from "@neondatabase/serverless";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { blockchain } from "./blockchain";
 import crypto from 'crypto';
+import connectPg from "connect-pg-simple";
+import { User, Candidate, Election, Vote, InsertUser, users, candidates, elections, votes } from "@shared/schema";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresStore = connectPg(session);
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private candidates: Map<number, Candidate>;
-  private elections: Map<number, Election>;
-  private votes: Map<number, Vote>;
+export class DatabaseStorage {
   sessionStore: session.Store;
-  currentId: { [key: string]: number };
 
   constructor() {
-    this.users = new Map();
-    this.candidates = new Map();
-    this.elections = new Map();
-    this.votes = new Map();
-    this.currentId = { users: 1, candidates: 1, elections: 1, votes: 1 };
-    this.sessionStore = new MemoryStore({ checkPeriod: 86400000 });
+    this.sessionStore = new PostgresStore({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
+      createTableIfMissing: true,
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId.users++;
-    const user: User = { ...insertUser, id, isAdmin: false };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async createCandidate(candidate: Omit<Candidate, "id">): Promise<Candidate> {
-    const id = this.currentId.candidates++;
-    const newCandidate: Candidate = { ...candidate, id };
-    this.candidates.set(id, newCandidate);
+    const [newCandidate] = await db.insert(candidates).values(candidate).returning();
     return newCandidate;
   }
 
   async getCandidates(electionId: number): Promise<Candidate[]> {
-    return Array.from(this.candidates.values()).filter(
-      (candidate) => candidate.electionId === electionId
-    );
+    return await db.select().from(candidates).where(eq(candidates.electionId, electionId));
   }
 
   async createElection(election: Omit<Election, "id">): Promise<Election> {
-    const id = this.currentId.elections++;
-    const newElection: Election = { ...election, id };
-    this.elections.set(id, newElection);
+    const [newElection] = await db.insert(elections).values(election).returning();
     return newElection;
   }
 
   async getElections(): Promise<Election[]> {
-    return Array.from(this.elections.values());
+    return await db.select().from(elections);
   }
 
   async castVote(vote: Omit<Vote, "id" | "blockHash">): Promise<Vote> {
@@ -72,25 +62,23 @@ export class MemStorage implements IStorage {
       voterHash: vote.voterHash,
     });
 
-    const id = this.currentId.votes++;
-    const newVote: Vote = { ...vote, id, blockHash: block.hash };
-    this.votes.set(id, newVote);
+    const [newVote] = await db
+      .insert(votes)
+      .values({ ...vote, blockHash: block.hash })
+      .returning();
     return newVote;
   }
 
   async getVotes(electionId: number): Promise<Vote[]> {
-    return Array.from(this.votes.values()).filter(
-      (vote) => vote.electionId === electionId
-    );
+    return await db.select().from(votes).where(eq(votes.electionId, electionId));
   }
 
   async makeAdmin(userId: number): Promise<void> {
-    const user = await this.getUser(userId);
-    if (user) {
-      user.isAdmin = true;
-      this.users.set(userId, user);
-    }
+    await db
+      .update(users)
+      .set({ isAdmin: true })
+      .where(eq(users.id, userId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
