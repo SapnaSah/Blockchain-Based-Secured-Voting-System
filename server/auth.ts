@@ -5,7 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import nodemailer from "nodemailer";
+import nodemailer from "nodemailer/lib/nodemailer.js";
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
