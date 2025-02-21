@@ -12,6 +12,8 @@ interface Block {
   hash: string;
 }
 
+type BlockWithoutHash = Omit<Block, "hash"> & { hash?: string };
+
 export class Blockchain {
   private chain: Block[];
 
@@ -20,7 +22,7 @@ export class Blockchain {
   }
 
   private createGenesisBlock(): Block {
-    return {
+    const block: BlockWithoutHash = {
       index: 0,
       timestamp: Date.now(),
       vote: {
@@ -29,25 +31,26 @@ export class Blockchain {
         voterHash: "genesis",
       },
       previousHash: "0",
-      hash: "0",
     };
+    block.hash = this.calculateHash(block);
+    return block as Block;
   }
 
-  private calculateHash(block: Omit<Block, "hash">): string {
+  private calculateHash(block: BlockWithoutHash): string {
     const data = block.index + block.timestamp + JSON.stringify(block.vote) + block.previousHash;
     return crypto.createHash('sha256').update(data).digest('hex');
   }
 
   addBlock(vote: { candidateId: number; electionId: number; voterHash: string }): Block {
     const previousBlock = this.chain[this.chain.length - 1];
-    const newBlock: Block = {
+    const block: BlockWithoutHash = {
       index: previousBlock.index + 1,
       timestamp: Date.now(),
       vote,
       previousHash: previousBlock.hash,
-      hash: '',
     };
-    newBlock.hash = this.calculateHash(newBlock);
+    block.hash = this.calculateHash(block);
+    const newBlock = block as Block;
     this.chain.push(newBlock);
     return newBlock;
   }
@@ -57,7 +60,12 @@ export class Blockchain {
       const currentBlock = this.chain[i];
       const previousBlock = this.chain[i - 1];
 
-      if (currentBlock.hash !== this.calculateHash({ ...currentBlock, hash: '' })) {
+      const blockWithoutHash: BlockWithoutHash = {
+        ...currentBlock,
+        hash: undefined,
+      };
+
+      if (currentBlock.hash !== this.calculateHash(blockWithoutHash)) {
         return false;
       }
 

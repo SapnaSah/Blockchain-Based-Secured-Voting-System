@@ -32,26 +32,65 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
 
 - Node.js 18+ installed
 - PostgreSQL database
+- VS Code (recommended) or any other IDE
 
 ### Installation
 
-1. Clone the repository
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd blockvote
+   ```
+
 2. Install dependencies:
    ```bash
    npm install
    ```
+
 3. Set up environment variables:
-   ```
-   DATABASE_URL=postgresql://...
+   Create a `.env` file in the root directory:
+   ```env
+   DATABASE_URL=postgresql://username:password@localhost:5432/blockvote
    SESSION_SECRET=your-secret-key
    ```
-4. Push the database schema:
+
+4. Create PostgreSQL database:
+   ```bash
+   createdb blockvote
+   ```
+
+5. Push the database schema:
    ```bash
    npm run db:push
    ```
-5. Start the development server:
+
+6. Create uploads directory:
+   ```bash
+   mkdir uploads
+   ```
+
+7. Start the development server:
    ```bash
    npm run dev
+   ```
+
+### VS Code Setup (Recommended)
+
+1. Install recommended extensions:
+   - ESLint
+   - Prettier
+   - TypeScript and JavaScript Language Features
+   - Tailwind CSS IntelliSense
+
+2. Configure VS Code settings:
+   ```json
+   {
+     "editor.formatOnSave": true,
+     "editor.defaultFormatter": "esbenp.prettier-vscode",
+     "editor.codeActionsOnSave": {
+       "source.fixAll.eslint": true
+     }
+   }
    ```
 
 ## Usage
