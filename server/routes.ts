@@ -6,8 +6,8 @@ import { storage } from "./storage";
 import profileRoutes from "./routes/profile";
 import path from "path";
 import fs from "fs";
-import express from "express"; // Added import for express.static
-
+import express from "express";
+import { createHash } from "crypto"; // Changed from direct crypto import
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Create uploads directory if it doesn't exist
@@ -39,7 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes
   app.post("/api/elections", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
-    
+
     const election = await storage.createElection({
       ...req.body,
       startTime: new Date(req.body.startTime),
@@ -51,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/candidates", async (req, res) => {
     if (!req.user?.isAdmin) return res.sendStatus(403);
-    
+
     const candidate = await storage.createCandidate(req.body);
     broadcast({ type: "NEW_CANDIDATE", candidate });
     res.json(candidate);
@@ -71,8 +71,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/vote", async (req, res) => {
     if (!req.user) return res.sendStatus(401);
 
-    const voterHash = crypto
-      .createHash('sha256')
+    const voterHash = createHash('sha256')
       .update(req.user.id.toString())
       .digest('hex');
 
