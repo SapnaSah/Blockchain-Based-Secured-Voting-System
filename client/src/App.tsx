@@ -10,14 +10,45 @@ import ProfilePage from "@/pages/profile-page";
 import { AuthProvider } from "@/hooks/use-auth";
 import { VotingProvider } from "@/hooks/use-voting";
 import { ProtectedRoute } from "./lib/protected-route";
+import { Navbar } from "@/components/ui/navbar";
+
+function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <main className="flex-1">{children}</main>
+    </div>
+  );
+}
 
 function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={HomePage} />
-      <ProtectedRoute path="/admin" component={AdminPage} />
-      <ProtectedRoute path="/profile" component={ProfilePage} />
+      <Route
+        path="/"
+        component={() => (
+          <Layout>
+            <ProtectedRoute path="/" component={HomePage} />
+          </Layout>
+        )}
+      />
+      <Route
+        path="/admin"
+        component={() => (
+          <Layout>
+            <ProtectedRoute path="/admin" component={AdminPage} />
+          </Layout>
+        )}
+      />
+      <Route
+        path="/profile"
+        component={() => (
+          <Layout>
+            <ProtectedRoute path="/profile" component={ProfilePage} />
+          </Layout>
+        )}
+      />
       <Route component={NotFound} />
     </Switch>
   );
