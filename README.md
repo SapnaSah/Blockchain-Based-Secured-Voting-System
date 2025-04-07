@@ -22,7 +22,7 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
 
 - **Backend**:
   - Express.js with TypeScript
-  - PostgreSQL database with Drizzle ORM
+  - MySQL database with Drizzle ORM
   - Passport.js for authentication
   - WebSocket server for real-time communication
 
@@ -31,7 +31,7 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
 ### Prerequisites
 
 - Node.js 18+ installed
-- PostgreSQL database
+- MySQL database
 - VS Code (recommended) or any other IDE
 
 ### Installation
@@ -50,13 +50,13 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
 3. Set up environment variables:
    Create a `.env` file in the root directory:
    ```env
-   DATABASE_URL=postgresql://username:password@localhost:5432/blockvote
+   DATABASE_URL=mysql://root:password@localhost:3306/blockvote
    SESSION_SECRET=your-secret-key
    ```
 
-4. Create PostgreSQL database:
+4. Create MySQL database:
    ```bash
-   createdb blockvote
+   mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS blockvote;"
    ```
 
 5. Push the database schema:

@@ -6,7 +6,7 @@ interface Block {
   vote: {
     candidateId: number;
     electionId: number;
-    voterHash: string;
+    voterHash: string; // Will always be filled with a hash, even if originally null
   };
   previousHash: string;
   hash: string;
@@ -41,12 +41,19 @@ export class Blockchain {
     return crypto.createHash('sha256').update(data).digest('hex');
   }
 
-  addBlock(vote: { candidateId: number; electionId: number; voterHash: string }): Block {
+  addBlock(vote: { candidateId: number; electionId: number; voterHash: string | null }): Block {
     const previousBlock = this.chain[this.chain.length - 1];
+    
+    // Ensure voterHash is never null for MySQL compatibility
+    const safeVoterHash = vote.voterHash || crypto.randomBytes(16).toString('hex');
+    
     const block: BlockWithoutHash = {
       index: previousBlock.index + 1,
       timestamp: Date.now(),
-      vote,
+      vote: {
+        ...vote,
+        voterHash: safeVoterHash
+      },
       previousHash: previousBlock.hash,
     };
     block.hash = this.calculateHash(block);

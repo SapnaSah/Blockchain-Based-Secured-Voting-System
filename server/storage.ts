@@ -1,22 +1,22 @@
 import { eq } from "drizzle-orm";
 import { initializeDatabase } from "./db";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import { blockchain } from "./blockchain";
 import crypto from 'crypto';
 import { User, Candidate, Election, Vote, InsertUser, users, candidates, elections, votes } from "@shared/schema";
 
-const PostgresStore = connectPgSimple(session);
+// Use the memory store for session management as MySQL doesn't have a native session store
+import createMemoryStore from "memorystore";
+const MemoryStore = createMemoryStore(session);
 
 export class DatabaseStorage {
   sessionStore: session.Store;
   db: any;
 
   constructor() {
-    // Use PostgreSQL session store
-    this.sessionStore = new PostgresStore({
-      conString: process.env.DATABASE_URL,
-      createTableIfMissing: true
+    // Use in-memory session store since we're now using MySQL
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
     });
     
     // Initialize db lazily - will be set later
@@ -63,15 +63,22 @@ export class DatabaseStorage {
   }
 
   async castVote(vote: Omit<Vote, "id" | "blockHash">): Promise<Vote> {
+    // Pass the voter hash to blockchain - it will handle null values
     const block = blockchain.addBlock({
       candidateId: vote.candidateId,
       electionId: vote.electionId,
       voterHash: vote.voterHash,
     });
 
+    // Store the vote with the block hash
     const [newVote] = await this.db
       .insert(votes)
-      .values({ ...vote, blockHash: block.hash })
+      .values({ 
+        ...vote, 
+        blockHash: block.hash,
+        // Ensure voterHash has a value if it was null (MySQL doesn't like nulls)
+        voterHash: vote.voterHash || block.vote.voterHash
+      })
       .returning();
     return newVote;
   }
