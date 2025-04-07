@@ -1,6 +1,6 @@
 # BlockVote - Secure Blockchain-Inspired Voting Platform
 
-A modern, secure voting platform that leverages blockchain-inspired technology to ensure transparent and verifiable elections. Built with React, Express.js, and TypeScript, this platform provides a robust solution for conducting secure online elections.
+A modern, secure voting platform that leverages blockchain-inspired technology to ensure transparent and verifiable elections. Built with React, Express.js, and TypeScript, this platform provides a robust solution for conducting secure online elections with flexible database options.
 
 ## Features
 
@@ -11,6 +11,7 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
 - 🎯 Interactive Election Management
 - 📱 Responsive Design
 - 👨‍💼 Administrative Dashboard
+- 💾 Automatic fallback to in-memory database when MySQL isn't available
 
 ## Tech Stack
 
@@ -23,15 +24,33 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
 - **Backend**:
   - Express.js with TypeScript
   - MySQL database with Drizzle ORM
+  - In-memory storage fallback with pre-seeded data
   - Passport.js for authentication
   - WebSocket server for real-time communication
+
+## Database Flexibility
+
+The application is designed to work with either:
+
+1. **MySQL Database** (preferred for production):
+   - Complete data persistence
+   - Optimized for production workloads
+   - Secure data storage and retrieval
+
+2. **In-Memory Storage** (automatic fallback):
+   - Activates automatically when MySQL is unavailable
+   - Pre-seeded with sample data (elections, candidates, users)
+   - Perfect for demos and testing
+   - No need for database setup
+
+This dual approach ensures the application can run in any environment, whether MySQL is available or not.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 18+ installed
-- MySQL database
+- MySQL database (optional - falls back to in-memory if unavailable)
 - VS Code (recommended) or any other IDE
 
 ### Installation
@@ -47,19 +66,25 @@ A modern, secure voting platform that leverages blockchain-inspired technology t
    npm install
    ```
 
-3. Set up environment variables:
+3. Set up environment variables (for MySQL usage):
    Create a `.env` file in the root directory:
    ```env
-   DATABASE_URL=mysql://root:password@localhost:3306/blockvote
+   # MySQL configuration (if available)
+   MYSQL_HOST=localhost
+   MYSQL_USER=root
+   MYSQL_PASSWORD=your-password
+   MYSQL_DATABASE=blockvote
+   
+   # Session secret
    SESSION_SECRET=your-secret-key
    ```
 
-4. Create MySQL database:
+4. Create MySQL database (if using MySQL):
    ```bash
    mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS blockvote;"
    ```
 
-5. Push the database schema:
+5. Push the database schema (if using MySQL):
    ```bash
    npm run db:push
    ```
