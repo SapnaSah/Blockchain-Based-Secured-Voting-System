@@ -20,8 +20,8 @@ async function hashPassword(password: string) {
 async function main() {
   console.log("🌱 Starting MySQL database seeding...");
   
-  // Database connection string
-  const connectionString = process.env.DATABASE_URL || 'mysql://root:@localhost:3306/blockvote';
+  // Explicitly use MySQL connection and ignore environment variable
+  const connectionString = 'mysql://root:@localhost:3306/blockvote';
   
   try {
     // Connect to the database
