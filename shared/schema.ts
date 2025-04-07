@@ -47,13 +47,34 @@ export const votes = pgTable("votes", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
-  displayName: true,
+  name: true,
+  email: true,
   bio: true
 });
 
-export const insertCandidateSchema = createInsertSchema(candidates);
-export const insertElectionSchema = createInsertSchema(elections);
-export const insertVoteSchema = createInsertSchema(votes);
+export const insertCandidateSchema = createInsertSchema(candidates).pick({
+  name: true,
+  platform: true,
+  electionId: true,
+  imageUrl: true
+});
+
+export const insertElectionSchema = createInsertSchema(elections).pick({
+  title: true,
+  description: true,
+  startDate: true,
+  endDate: true,
+  isActive: true,
+  createdBy: true
+});
+
+export const insertVoteSchema = createInsertSchema(votes).pick({
+  candidateId: true,
+  electionId: true,
+  voterId: true,
+  voterHash: true,
+  blockHash: true
+});
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

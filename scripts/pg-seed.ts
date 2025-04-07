@@ -28,81 +28,123 @@ async function seedDatabase() {
 
     // Seed admin user
     const adminPassword = await hashPassword("admin123");
-    const adminUser = await db.insert(users).values({
-      username: "admin",
-      password: adminPassword,
-      isAdmin: true,
-      displayName: "Admin User",
-      bio: "System administrator"
-    }).returning();
+    const adminUser = await db.execute(
+      `INSERT INTO users (username, password, is_admin, name, bio, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      ["admin", adminPassword, true, "Admin User", "System administrator", new Date()]
+    );
     console.log("Admin user created:", adminUser[0].id);
 
     // Seed regular user
     const userPassword = await hashPassword("user123");
-    const regularUser = await db.insert(users).values({
-      username: "user",
-      password: userPassword,
-      isAdmin: false,
-      displayName: "Regular User",
-      bio: "A voter in the system"
-    }).returning();
+    const regularUser = await db.execute(
+      `INSERT INTO users (username, password, is_admin, name, bio, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id`,
+      ["user", userPassword, false, "Regular User", "A voter in the system", new Date()]
+    );
     console.log("Regular user created:", regularUser[0].id);
 
     // Seed elections
-    const presidentialElection = await db.insert(elections).values({
-      title: "Presidential Election 2024",
-      description: "Vote for the next president of the organization",
-      startTime: new Date("2024-04-01T00:00:00Z"),
-      endTime: new Date("2024-07-01T23:59:59Z"),
-      isActive: true
-    }).returning();
+    const presidentialElection = await db.execute(
+      `INSERT INTO elections (title, description, start_date, end_date, is_active, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        "Presidential Election 2024",
+        "Vote for the next president of the organization",
+        new Date("2024-04-01T00:00:00Z"),
+        new Date("2024-07-01T23:59:59Z"),
+        true,
+        adminUser[0].id,
+        new Date()
+      ]
+    );
     console.log("Presidential election created:", presidentialElection[0].id);
 
     // Seed candidates for presidential election
-    const candidate1 = await db.insert(candidates).values({
-      name: "Jane Smith",
-      description: "Experienced leader with a focus on innovation",
-      electionId: presidentialElection[0].id
-    }).returning();
+    const candidate1 = await db.execute(
+      `INSERT INTO candidates (name, platform, election_id, created_at)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        "Jane Smith",
+        "Experienced leader with a focus on innovation",
+        presidentialElection[0].id,
+        new Date()
+      ]
+    );
     console.log("Candidate 1 created:", candidate1[0].id);
 
-    const candidate2 = await db.insert(candidates).values({
-      name: "John Doe",
-      description: "Dedicated to transparency and community building",
-      electionId: presidentialElection[0].id
-    }).returning();
+    const candidate2 = await db.execute(
+      `INSERT INTO candidates (name, platform, election_id, created_at)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        "John Doe",
+        "Dedicated to transparency and community building",
+        presidentialElection[0].id,
+        new Date()
+      ]
+    );
     console.log("Candidate 2 created:", candidate2[0].id);
 
-    const candidate3 = await db.insert(candidates).values({
-      name: "Alex Johnson",
-      description: "Committed to sustainability and future growth",
-      electionId: presidentialElection[0].id
-    }).returning();
+    const candidate3 = await db.execute(
+      `INSERT INTO candidates (name, platform, election_id, created_at)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        "Alex Johnson",
+        "Committed to sustainability and future growth",
+        presidentialElection[0].id,
+        new Date()
+      ]
+    );
     console.log("Candidate 3 created:", candidate3[0].id);
 
     // Seed a board election
-    const boardElection = await db.insert(elections).values({
-      title: "Board Member Election",
-      description: "Select new board members for the organization",
-      startTime: new Date("2024-04-15T00:00:00Z"),
-      endTime: new Date("2024-05-15T23:59:59Z"),
-      isActive: true
-    }).returning();
+    const boardElection = await db.execute(
+      `INSERT INTO elections (title, description, start_date, end_date, is_active, created_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING id`,
+      [
+        "Board Member Election",
+        "Select new board members for the organization",
+        new Date("2024-04-15T00:00:00Z"),
+        new Date("2024-05-15T23:59:59Z"),
+        true,
+        adminUser[0].id,
+        new Date()
+      ]
+    );
     console.log("Board election created:", boardElection[0].id);
 
     // Seed candidates for board election
-    const boardCandidate1 = await db.insert(candidates).values({
-      name: "Sarah Wilson",
-      description: "Financial expert with 10 years experience",
-      electionId: boardElection[0].id
-    }).returning();
+    const boardCandidate1 = await db.execute(
+      `INSERT INTO candidates (name, platform, election_id, created_at)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        "Sarah Wilson",
+        "Financial expert with 10 years experience",
+        boardElection[0].id,
+        new Date()
+      ]
+    );
     console.log("Board candidate 1 created:", boardCandidate1[0].id);
 
-    const boardCandidate2 = await db.insert(candidates).values({
-      name: "Michael Chen",
-      description: "Technology leader focused on digital transformation",
-      electionId: boardElection[0].id
-    }).returning();
+    const boardCandidate2 = await db.execute(
+      `INSERT INTO candidates (name, platform, election_id, created_at)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+      [
+        "Michael Chen",
+        "Technology leader focused on digital transformation",
+        boardElection[0].id,
+        new Date()
+      ]
+    );
     console.log("Board candidate 2 created:", boardCandidate2[0].id);
 
     console.log("Database seeding completed successfully!");
