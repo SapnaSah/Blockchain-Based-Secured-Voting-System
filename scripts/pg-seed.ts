@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { elections, candidates, users } from "../shared/schema";
+import * as schema from "../shared/schema";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
 
@@ -13,150 +14,133 @@ async function hashPassword(password: string) {
 }
 
 async function seedDatabase() {
+  console.log("🌱 Starting PostgreSQL database seeding...");
+
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  const connectionString = process.env.DATABASE_URL;
+  console.log(`Connecting to PostgreSQL at ${connectionString}...`);
+
   try {
-    console.log("Seeding database...");
+    // Create the postgres client
+    const queryClient = postgres(connectionString);
+    const db = drizzle(queryClient, { schema });
 
-    // PostgreSQL connection
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-      throw new Error("DATABASE_URL environment variable is not set");
-    }
+    // Create schema (tables)
+    console.log("Creating database schema...");
+    await queryClient`
+      DROP TABLE IF EXISTS votes CASCADE;
+      DROP TABLE IF EXISTS candidates CASCADE;
+      DROP TABLE IF EXISTS elections CASCADE;
+      DROP TABLE IF EXISTS users CASCADE;
+    `;
 
-    // Initialize Drizzle
-    const client = postgres(connectionString);
-    const db = drizzle(client);
+    // Create users table
+    await queryClient`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50) NOT NULL UNIQUE,
+        password VARCHAR(255) NOT NULL,
+        is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+        name VARCHAR(100),
+        email VARCHAR(255),
+        avatar_url VARCHAR(255),
+        bio TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
 
-    // Seed admin user
+    // Create elections table
+    await queryClient`
+      CREATE TABLE IF NOT EXISTS elections (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        start_date TIMESTAMP NOT NULL,
+        end_date TIMESTAMP NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_by INTEGER REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Create candidates table
+    await queryClient`
+      CREATE TABLE IF NOT EXISTS candidates (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        platform TEXT,
+        election_id INTEGER NOT NULL REFERENCES elections(id),
+        image_url VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Create votes table
+    await queryClient`
+      CREATE TABLE IF NOT EXISTS votes (
+        id SERIAL PRIMARY KEY,
+        candidate_id INTEGER NOT NULL REFERENCES candidates(id),
+        election_id INTEGER NOT NULL REFERENCES elections(id),
+        voter_id INTEGER REFERENCES users(id),
+        voter_hash VARCHAR(255) NOT NULL,
+        block_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Seed users
+    console.log("Seeding users...");
     const adminPassword = await hashPassword("admin123");
-    const adminUser = await db.execute(
-      `INSERT INTO users (username, password, is_admin, name, bio, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      ["admin", adminPassword, true, "Admin User", "System administrator", new Date()]
-    );
-    console.log("Admin user created:", adminUser[0].id);
+    const user1Password = await hashPassword("user123");
+    const user2Password = await hashPassword("user456");
 
-    // Seed regular user
-    const userPassword = await hashPassword("user123");
-    const regularUser = await db.execute(
-      `INSERT INTO users (username, password, is_admin, name, bio, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      ["user", userPassword, false, "Regular User", "A voter in the system", new Date()]
-    );
-    console.log("Regular user created:", regularUser[0].id);
+    await queryClient`
+      INSERT INTO users (username, password, is_admin, name, email, bio)
+      VALUES 
+        ('admin', ${adminPassword}, TRUE, 'Admin User', 'admin@example.com', 'System administrator'),
+        ('alice', ${user1Password}, FALSE, 'Alice Smith', 'alice@example.com', 'Regular voter'),
+        ('bob', ${user2Password}, FALSE, 'Bob Johnson', 'bob@example.com', 'Election enthusiast')
+    `;
 
     // Seed elections
-    const presidentialElection = await db.execute(
-      `INSERT INTO elections (title, description, start_date, end_date, is_active, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id`,
-      [
-        "Presidential Election 2024",
-        "Vote for the next president of the organization",
-        new Date("2024-04-01T00:00:00Z"),
-        new Date("2024-07-01T23:59:59Z"),
-        true,
-        adminUser[0].id,
-        new Date()
-      ]
-    );
-    console.log("Presidential election created:", presidentialElection[0].id);
+    console.log("Seeding elections...");
+    const startDate1 = new Date();
+    const endDate1 = new Date();
+    endDate1.setDate(endDate1.getDate() + 7);
 
-    // Seed candidates for presidential election
-    const candidate1 = await db.execute(
-      `INSERT INTO candidates (name, platform, election_id, created_at)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [
-        "Jane Smith",
-        "Experienced leader with a focus on innovation",
-        presidentialElection[0].id,
-        new Date()
-      ]
-    );
-    console.log("Candidate 1 created:", candidate1[0].id);
+    const startDate2 = new Date();
+    startDate2.setDate(startDate2.getDate() - 1);
+    const endDate2 = new Date();
+    endDate2.setDate(endDate2.getDate() + 14);
 
-    const candidate2 = await db.execute(
-      `INSERT INTO candidates (name, platform, election_id, created_at)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [
-        "John Doe",
-        "Dedicated to transparency and community building",
-        presidentialElection[0].id,
-        new Date()
-      ]
-    );
-    console.log("Candidate 2 created:", candidate2[0].id);
+    await queryClient`
+      INSERT INTO elections (title, description, start_date, end_date, is_active, created_by)
+      VALUES 
+        ('Presidential Election', 'Vote for the next president', ${startDate1}, ${endDate1}, TRUE, 1),
+        ('Board Member Elections', 'Select new board members', ${startDate2}, ${endDate2}, TRUE, 1)
+    `;
 
-    const candidate3 = await db.execute(
-      `INSERT INTO candidates (name, platform, election_id, created_at)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [
-        "Alex Johnson",
-        "Committed to sustainability and future growth",
-        presidentialElection[0].id,
-        new Date()
-      ]
-    );
-    console.log("Candidate 3 created:", candidate3[0].id);
+    // Seed candidates
+    console.log("Seeding candidates...");
+    await queryClient`
+      INSERT INTO candidates (name, platform, election_id, image_url)
+      VALUES 
+        ('John Doe', 'Economic growth and prosperity', 1, 'https://i.pravatar.cc/150?u=john'),
+        ('Jane Smith', 'Social justice and equality', 1, 'https://i.pravatar.cc/150?u=jane'),
+        ('Alex Johnson', 'Environmental protection', 1, 'https://i.pravatar.cc/150?u=alex'),
+        ('Sarah Williams', 'Innovation focus', 2, 'https://i.pravatar.cc/150?u=sarah'),
+        ('Michael Brown', 'Fiscal responsibility', 2, 'https://i.pravatar.cc/150?u=michael')
+    `;
 
-    // Seed a board election
-    const boardElection = await db.execute(
-      `INSERT INTO elections (title, description, start_date, end_date, is_active, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id`,
-      [
-        "Board Member Election",
-        "Select new board members for the organization",
-        new Date("2024-04-15T00:00:00Z"),
-        new Date("2024-05-15T23:59:59Z"),
-        true,
-        adminUser[0].id,
-        new Date()
-      ]
-    );
-    console.log("Board election created:", boardElection[0].id);
-
-    // Seed candidates for board election
-    const boardCandidate1 = await db.execute(
-      `INSERT INTO candidates (name, platform, election_id, created_at)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [
-        "Sarah Wilson",
-        "Financial expert with 10 years experience",
-        boardElection[0].id,
-        new Date()
-      ]
-    );
-    console.log("Board candidate 1 created:", boardCandidate1[0].id);
-
-    const boardCandidate2 = await db.execute(
-      `INSERT INTO candidates (name, platform, election_id, created_at)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id`,
-      [
-        "Michael Chen",
-        "Technology leader focused on digital transformation",
-        boardElection[0].id,
-        new Date()
-      ]
-    );
-    console.log("Board candidate 2 created:", boardCandidate2[0].id);
-
-    console.log("Database seeding completed successfully!");
-    
-    // Close the connection
-    await client.end();
-    
+    console.log("✅ Database seeded successfully!");
+    process.exit(0);
   } catch (error) {
-    console.error("Error seeding the database:", error);
+    console.error("❌ Error seeding database:", error);
     process.exit(1);
   }
 }
 
-// Run the seed function
 seedDatabase();

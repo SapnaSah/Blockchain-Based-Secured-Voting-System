@@ -2,24 +2,21 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@shared/schema";
 
-// Database connection configuration
+// PostgreSQL connection configuration
 const MAX_RETRIES = 5;
 const RETRY_DELAY = 5000; // 5 seconds
 
-// Create database connection
+// Create PostgreSQL connection
 async function createClient(retries = MAX_RETRIES): Promise<postgres.Sql> {
   try {
     console.log("Attempting to connect to PostgreSQL database...");
 
-    // Get the connection string from environment variables
-    const connectionString = process.env.DATABASE_URL;
-    
-    if (!connectionString) {
+    if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL environment variable is not set");
     }
-    
-    // Create the Postgres client
-    const client = postgres(connectionString);
+
+    const connectionString = process.env.DATABASE_URL;
+    const client = postgres(connectionString, { max: 10 });
     
     // Test the connection
     await client`SELECT 1`;
